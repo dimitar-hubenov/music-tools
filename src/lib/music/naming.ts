@@ -1,7 +1,7 @@
 // src/lib/music/naming.ts
 
-import { 
-    PITCH_CLASSES, 
+import {  
+    PITCH_CLASS_SPELLINGS, 
     getNaturalIndex,
     normalizePitchClass
 } from "./theory"
@@ -42,9 +42,9 @@ export function getNoteName(
 ): string {
 
     const pc = normalizePitchClass(midi)
-    const pitch = PITCH_CLASSES[pc]
+    const primary = PITCH_CLASS_SPELLINGS[pc][0]
 
-    const naturalIndex = getNaturalIndex(pitch.natural)
+    const naturalIndex = getNaturalIndex(primary.natural)
 
     return NAME_MAP[system][naturalIndex]
 }

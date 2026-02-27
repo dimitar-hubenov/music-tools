@@ -1,7 +1,7 @@
 // src/components/Piano/PianoKeyboard.tsx
 
 import clsx from "clsx"
-import { getNoteName, type NamingSystem, isAccidental } from "../../lib/music"
+import { getNoteName, type NamingSystem } from "../../lib/music"
 
 interface Props {
     lowMidi?: number
@@ -15,7 +15,8 @@ interface Props {
 const WHITE_WIDTH = 48
 
 function isBlack(midi: number) {
-    return isAccidental(midi)
+    const pc = ((midi % 12) + 12) % 12
+    return [1, 3, 6, 8, 10].includes(pc)
 }
 
 export default function PianoKeyboard({

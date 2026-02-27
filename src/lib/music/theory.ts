@@ -39,68 +39,123 @@ export interface Pitch {
     accidental?: Accidental
 }
 
-export interface PitchClass {
-    pc: number              // 0–11
-    natural: Natural
-    accidental?: Accidental
+/**
+ * All enharmonic spellings per pitch class (0–11)
+ */
+export const PITCH_CLASS_SPELLINGS: Record<number, Pitch[]> = {
+    0: [
+        { natural: "C" },
+        { natural: "B", accidental: "#" },
+        { natural: "D", accidental: "bb" }
+    ],
+    1: [
+        { natural: "C", accidental: "#" },
+        { natural: "D", accidental: "b" }
+    ],
+    2: [
+        { natural: "D" },
+        { natural: "C", accidental: "##" },
+        { natural: "E", accidental: "bb" }
+    ],
+    3: [
+        { natural: "D", accidental: "#" },
+        { natural: "E", accidental: "b" }
+    ],
+    4: [
+        { natural: "E" },
+        { natural: "F", accidental: "b" },
+        { natural: "D", accidental: "##" }
+    ],
+    5: [
+        { natural: "F" },
+        { natural: "E", accidental: "#" },
+        { natural: "G", accidental: "bb" }
+    ],
+    6: [
+        { natural: "F", accidental: "#" },
+        { natural: "G", accidental: "b" }
+    ],
+    7: [
+        { natural: "G" },
+        { natural: "F", accidental: "##" },
+        { natural: "A", accidental: "bb" }
+    ],
+    8: [
+        { natural: "G", accidental: "#" },
+        { natural: "A", accidental: "b" }
+    ],
+    9: [
+        { natural: "A" },
+        { natural: "G", accidental: "##" },
+        { natural: "B", accidental: "bb" }
+    ],
+    10: [
+        { natural: "A", accidental: "#" },
+        { natural: "B", accidental: "b" }
+    ],
+    11: [
+        { natural: "B" },
+        { natural: "C", accidental: "b" },
+        { natural: "A", accidental: "##" }
+    ]
 }
 
-export const PITCH_CLASSES: Record<number, PitchClass> = {
-    0: { pc: 0, natural: "C" },
-    1: { pc: 1, natural: "C", accidental: "#" },
-    2: { pc: 2, natural: "D" },
-    3: { pc: 3, natural: "D", accidental: "#" },
-    4: { pc: 4, natural: "E" },
-    5: { pc: 5, natural: "F" },
-    6: { pc: 6, natural: "F", accidental: "#" },
-    7: { pc: 7, natural: "G" },
-    8: { pc: 8, natural: "G", accidental: "#" },
-    9: { pc: 9, natural: "A" },
-    10: { pc: 10, natural: "A", accidental: "#" },
-    11: { pc: 11, natural: "B" },
-}
-
-const FLAT_EQUIVALENTS: Record<number, PitchClass> = {
-    0: { pc: 0, natural: "C" },
-    1: { pc: 1, natural: "D", accidental: "b" },
-    2: { pc: 2, natural: "D" },
-    3: { pc: 3, natural: "E", accidental: "b" },
-    4: { pc: 4, natural: "E" },
-    5: { pc: 5, natural: "F" },
-    6: { pc: 6, natural: "G", accidental: "b" },
-    7: { pc: 7, natural: "G" },
-    8: { pc: 8, natural: "A", accidental: "b" },
-    9: { pc: 9, natural: "A" },
-    10: { pc: 10, natural: "B", accidental: "b" },
-    11: { pc: 11, natural: "B" },
-}
-
-export function toFlat(pc: number): PitchClass {
-    return FLAT_EQUIVALENTS[normalizePitchClass(pc)]
-}
-
+/**
+ * Returns true if pitch class has a natural spelling
+ */
 export function isNatural(pc: number): boolean {
-    return !PITCH_CLASSES[normalizePitchClass(pc)].accidental
+    const normalized = normalizePitchClass(pc)
+    return PITCH_CLASS_SPELLINGS[normalized]
+        .some(p => !p.accidental)
 }
 
+/**
+ * Returns true if pitch class has any accidental spelling
+ */
 export function isAccidental(pc: number): boolean {
-    return !!PITCH_CLASSES[normalizePitchClass(pc)].accidental
+    const normalized = normalizePitchClass(pc)
+    return PITCH_CLASS_SPELLINGS[normalized]
+        .some(p => p.accidental)
 }
 
+/**
+ * Format pitch class into string name (e.g. "F#", "Gb", "Cb", "E##")
+ */
 export function formatPitchClass(
     pc: number,
-    prefer: "sharp" | "flat" = "sharp"
+    prefer: "sharp" | "flat" = "sharp",
+    allowDoubles = false
 ): string {
+
     const normalized = normalizePitchClass(pc)
+    const options = PITCH_CLASS_SPELLINGS[normalized]
 
-    const pitch =
-        prefer === "flat"
-            ? toFlat(normalized)
-            : PITCH_CLASSES[normalized]
+    const filtered = allowDoubles
+        ? options
+        : options.filter(o =>
+            !o.accidental || o.accidental.length === 1
+        )
 
-    return pitch.natural + (pitch.accidental ?? "")
+    let chosen: Pitch | undefined
+
+    if (prefer === "sharp") {
+        chosen =
+            filtered.find(o => o.accidental?.includes("#")) ??
+            filtered.find(o => !o.accidental)
+    } else {
+        chosen =
+            filtered.find(o => o.accidental?.includes("b")) ??
+            filtered.find(o => !o.accidental)
+    }
+
+    chosen ??= filtered[0]
+
+    return chosen.natural + (chosen.accidental ?? "")
 }
 
+/**
+ * Convert (natural + accidental) to pitch class
+ */
 export function transposePitchClass(
     natural: Natural,
     accidental?: Accidental
@@ -122,7 +177,7 @@ export function transposePitchClass(
 }
 
 /**
- * Normalize a pitch class number to 0–11
+ * Normalize pitch class to 0–11
  */
 export function normalizePitchClass(pc: number): number {
     return ((pc % 12) + 12) % 12
