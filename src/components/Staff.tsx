@@ -34,11 +34,16 @@ export default function Staff({
         const staveNote = new StaveNote({
             keys: [note],
             duration: "w",
-
+            clef: clef
         })
 
         if (accidental) {
             staveNote.addModifier(new Accidental(accidental), 0); // applies to note at index 0
+        } else {
+            // Add invisible accidental to reserve spacing
+            const ghost = new Accidental("n") // natural
+            ghost.setStyle({ fillStyle: "transparent", strokeStyle: "transparent" })
+            staveNote.addModifier(ghost, 0)
         }
 
         const voice = new Voice({ numBeats: 4, beatValue: 4 });

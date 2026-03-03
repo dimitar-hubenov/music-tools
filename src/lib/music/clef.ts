@@ -13,6 +13,7 @@ const CLEFS = [
     "subbass",         // f on line 0
     "french",          // g on line 4
     "tab",             // six string tab
+    "grand",           // treble and bass staves together, with brace
 ] as const
 
 export type Clef = typeof CLEFS[number]

@@ -6,8 +6,10 @@ import { getNoteName, type NamingSystem } from "../../lib/music"
 interface Props {
     lowMidi?: number
     highMidi?: number
+    onPress?: (midi: number) => void
     onNote?: (midi: number) => void
-    highlighted?: number[]
+    highlighted?: number[]       // correct / target keys
+    wrong?: number[]             // wrong keys
     disabled?: number[]
     naming?: NamingSystem
 }
@@ -22,8 +24,10 @@ function isBlack(midi: number) {
 export default function PianoKeyboard({
     lowMidi = 60,
     highMidi = 72,
+    onPress,
     onNote,
     highlighted = [],
+    wrong = [],
     disabled = [],
     naming = "lat",
 }: Props) {
@@ -44,8 +48,10 @@ export default function PianoKeyboard({
                     <WhiteKey
                         key={midi}
                         midi={midi}
+                        onPress={onPress}
                         onNote={onNote}
                         active={highlighted.includes(midi)}
+                        wrong={wrong.includes(midi)}
                         disabled={disabled.includes(midi)}
                         naming={naming}
                     />
@@ -65,8 +71,10 @@ export default function PianoKeyboard({
                             key={midi}
                             midi={midi}
                             left={left}
+                            onPress={onPress}
                             onNote={onNote}
                             active={highlighted.includes(midi)}
+                            wrong={wrong.includes(midi)}
                             disabled={disabled.includes(midi)}
                         />
                     )
@@ -78,40 +86,46 @@ export default function PianoKeyboard({
 
 interface KeyProps {
     midi: number
+    onPress?: (midi: number) => void
     onNote?: (midi: number) => void
     active?: boolean
+    wrong?: boolean
     disabled?: boolean
     naming?: NamingSystem
 }
 
 function WhiteKey({
     midi,
+    onPress,
     onNote,
     active,
+    wrong,
     disabled,
     naming,
 }: KeyProps) {
     return (
         <button
             disabled={disabled}
+            onMouseDown={() => onPress?.(midi)}
             onClick={() => onNote?.(midi)}
             className={clsx(
                 "relative w-12 h-40 border border-zinc-400 rounded-b-md",
-                "bg-gradient-to-b from-white to-gray-200",
                 "transition-all duration-75 ease-out",
                 "shadow-[0_4px_0_rgb(161,161,170)]",
                 "active:shadow-[0_1px_0_rgb(161,161,170)]",
                 "active:translate-y-[3px]",
-                "active:bg-zinc-200",
-                "hover:bg-zinc-100",
-                active && "bg-blue-300",
-                disabled && "opacity-40"
+                disabled && "opacity-40",
+
+                wrong ? "bg-red-400" :
+                    active ? "bg-green-400" :
+                        "bg-gradient-to-b from-white to-gray-200"
             )}
         >
-            {naming && 
+            {naming && (
                 <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs font-medium text-zinc-700 pointer-events-none">
-                {getNoteName(midi, naming)}
-            </span>}
+                    {getNoteName(midi, naming)}
+                </span>
+            )}
         </button>
     )
 }
@@ -123,32 +137,29 @@ interface BlackKeyProps extends KeyProps {
 function BlackKey({
     midi,
     left,
+    onPress,
     onNote,
     active,
+    wrong,
     disabled,
 }: BlackKeyProps) {
     return (
         <button
             disabled={disabled}
+            onMouseDown={() => onPress?.(midi)}
             onClick={() => onNote?.(midi)}
             className={clsx(
                 "absolute pointer-events-auto",
                 "w-8 h-24 rounded-b-md",
-
-                "bg-gradient-to-b from-zinc-800 to-black",
-
                 "transition-all duration-75 ease-out",
-
                 "shadow-[0_3px_0_rgb(24,24,27)]",
                 "active:shadow-[0_1px_0_rgb(24,24,27)]",
-
                 "active:translate-y-[2px]",
-                "active:bg-zinc-800",
-
-                "hover:bg-zinc-900",
-
-                active && "bg-blue-600",
-                disabled && "opacity-40"
+                disabled && "opacity-40",
+                
+                wrong ? "bg-red-400 animate-shake" :
+                    active ? "bg-green-400" :
+                        "bg-gradient-to-b from-zinc-800 to-black"
             )}
             style={{ left }}
         />
