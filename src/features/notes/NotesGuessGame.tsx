@@ -3,9 +3,13 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 
-import type { NotesExerciseConfig } from "./config"
-import { expandNotesSource, randomFromPool, type SpelledNote, spellMidi } from "../../lib/music"
-import { clefToVexflow, spelledToVexflow } from "../../lib/music/vexflow"
+import type { NotesExerciseConfig } from "./notesConfig"
+import { 
+    expandNotesSource, 
+    type MusicSymbol, 
+    randomFromPool,
+    spellMidi
+} from "../../lib/music"
 
 import Staff from "../../components/Staff"
 import PianoStaff from "../../components/PianoStaff"
@@ -21,9 +25,11 @@ export default function NotesGuessGame({ config }: Props) {
         ? expandNotesSource(config.notes, config.accidentals)
         : []
 
-    const [target, setTarget] = useState<SpelledNote>(() =>
-        spellMidi(randomFromPool(pool), config.accidentals)
-    )
+    const [target, setTarget] = useState<MusicSymbol>(() => ({
+        type: "note",
+        pitch: spellMidi(randomFromPool(pool), config.accidentals),
+        duration: 4
+    }))
 
     const [feedback, setFeedback] = useState<{
         correct?: number
@@ -32,25 +38,37 @@ export default function NotesGuessGame({ config }: Props) {
     } | null>(null)
 
     function nextQuestion() {
-        const nextMidi = randomFromPool(pool, target?.midi)
-        setTarget(spellMidi(nextMidi, config.accidentals))
+        const previousMidi =
+            target.type === "note"
+                ? target.pitch.midi
+                : undefined
+
+        const nextMidi = randomFromPool(pool, previousMidi)
+
+        setTarget({
+            type: "note",
+            pitch: spellMidi(nextMidi, config.accidentals),
+            duration: 4
+        })
+
         setFeedback(null)
     }
 
     function evaluateUserInput(midi: number): boolean {
-        if (!target) return false
+        if (target.type !== "note") return false
 
-        const isCorrect = midi % 12 === target.midi % 12
+        const targetMidi = target.pitch.midi
+        const isCorrect = midi % 12 === targetMidi % 12
 
         if (isCorrect) {
             setFeedback({
                 correct: midi,
-                target: target.midi
+                target: targetMidi
             })
         } else {
             setFeedback({
                 wrong: midi,
-                target: target.midi
+                target: targetMidi
             })
         }
 
@@ -74,24 +92,18 @@ export default function NotesGuessGame({ config }: Props) {
 
     if (target == null) return null
 
-    const vf = spelledToVexflow(target)
-
     const isGrand = config.clef === "grand"
 
     return (
         <div className="space-y-6">
             {isGrand ? (
-                <PianoStaff
-                    trebleNote={target.midi >= 60 ? vf.key : undefined}
-                    trebleAccidental={target.midi >= 60 ? vf.accidental : undefined}
-                    bassNote={target.midi < 60 ? vf.key : undefined}
-                    bassAccidental={target.midi < 60 ? vf.accidental : undefined}
+                <PianoStaff 
+                    target={target}
                 />
             ) : (
                 <Staff
-                    clef={clefToVexflow(config.clef)}
-                    note={vf.key}
-                    accidental={vf.accidental}
+                    clef={config.clef}
+                    target={target}
                 />
             )}
 

@@ -1,58 +1,123 @@
 // src/components/Staff.tsx
 
 import { useEffect, useRef } from "react"
-import { Renderer, Stave, StaveNote, Accidental, Voice, Formatter } from "vexflow"
+
+import {
+    type Clef,
+    stemUpForNote
+} from "../lib/music"
+
+import type { MusicSymbol } from "../lib/music/symbol"
+
+import {
+    spelledToVexflow,
+    durationToVexflow,
+    
+} from "../lib/music/vexflow"
+
+import {
+    Renderer,
+    Stave,
+    StaveNote,
+    Accidental,
+    Voice,
+    Formatter,
+    Stem
+} from "vexflow"
 
 interface StaffProps {
-    clef: string
-    note?: string // vexflow format: "c/4"
-    accidental?: string
+    clef: Clef
+    target: MusicSymbol
 }
 
 export default function Staff({
     clef,
-    note,
-    accidental,
+    target
 }: StaffProps) {
+
     const containerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
+
         if (!containerRef.current) return
 
         containerRef.current.innerHTML = ""
 
-        const renderer = new Renderer(containerRef.current, Renderer.Backends.SVG);
-        renderer.resize(160, 160);
-        const context = renderer.getContext();
+        const renderer = new Renderer(
+            containerRef.current,
+            Renderer.Backends.SVG
+        )
 
-        const stave = new Stave(10, 20, 120);
-        stave.addClef(clef);
-        stave.setContext(context).draw();
+        renderer.resize(200, 160)
 
-        if (!note) return
+        const context = renderer.getContext()
 
-        const staveNote = new StaveNote({
-            keys: [note],
-            duration: "w",
-            clef: clef
-        })
+        const stave = new Stave(10, 20, 180)
+        stave.addClef(clef)
+        stave.setContext(context).draw()
 
-        if (accidental) {
-            staveNote.addModifier(new Accidental(accidental), 0); // applies to note at index 0
+        const duration = durationToVexflow(target.duration)
+
+        let staveNote: StaveNote
+
+        if (target.type === "rest") {
+
+            staveNote = new StaveNote({
+                clef,
+                keys: ["b/4"],     // standard rest placement
+                duration: duration + "r"
+            })
+
         } else {
-            // Add invisible accidental to reserve spacing
-            const ghost = new Accidental("n") // natural
-            ghost.setStyle({ fillStyle: "transparent", strokeStyle: "transparent" })
-            staveNote.addModifier(ghost, 0)
+
+            const spelled = target.pitch
+
+            const vf = spelledToVexflow(spelled)
+
+            const stemUp = stemUpForNote(spelled, clef)
+
+            staveNote = new StaveNote({
+                clef,
+                keys: [vf.key],
+                duration,
+                stemDirection: stemUp ? Stem.UP : Stem.DOWN
+            })
+
+            if (vf.accidental) {
+
+                staveNote.addModifier(
+                    new Accidental(vf.accidental),
+                    0
+                )
+
+            } else {
+
+                // invisible accidental to stabilize spacing
+                const ghost = new Accidental("n")
+
+                ghost.setStyle({
+                    fillStyle: "transparent",
+                    strokeStyle: "transparent"
+                })
+
+                staveNote.addModifier(ghost, 0)
+            }
         }
 
-        const voice = new Voice({ numBeats: 4, beatValue: 4 });
-        voice.addTickables([staveNote]);
+        const voice = new Voice({
+            numBeats: 4,
+            beatValue: 4
+        }).setStrict(false)
 
-        new Formatter().joinVoices([voice]).formatToStave([voice], stave);
+        voice.addTickables([staveNote])
 
-        voice.draw(context, stave);
-    }, [clef, note, accidental])
+        new Formatter()
+            .joinVoices([voice])
+            .format([voice], 140)
+
+        voice.draw(context, stave)
+
+    }, [clef, target])
 
     return <div ref={containerRef} />
 }

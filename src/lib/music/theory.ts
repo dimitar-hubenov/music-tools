@@ -182,3 +182,19 @@ export function transposePitchClass(
 export function normalizePitchClass(pc: number): number {
     return ((pc % 12) + 12) % 12
 }
+
+/**
+ * Duration values
+ */
+
+export const DURATIONS = [
+    1,    // whole note
+    2,    // half note
+    4,    // quarter note
+    8,    // eighth note
+    16,   // sixteenth note
+    32,   // thirty-second note
+    64    // sixty-fourth note
+] as const
+
+export type Duration = typeof DURATIONS[number]

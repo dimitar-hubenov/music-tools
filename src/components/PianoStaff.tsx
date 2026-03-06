@@ -5,117 +5,109 @@ import {
     Renderer,
     Stave,
     StaveNote,
-    Accidental,
     Voice,
     Formatter,
+    Accidental,
+    Stem,
     StaveConnector
 } from "vexflow"
 
-interface PianoStaffProps {
-    trebleNote?: string   // "c/5"
-    trebleAccidental?: string
-    bassNote?: string     // "c/3"
-    bassAccidental?: string
-}
+import { type MusicSymbol, stemUpForNote } from "../lib/music"
+import {
+    spelledToVexflow,
+    durationToVexflow,
+} from "../lib/music/vexflow"
 
 export default function PianoStaff({
-    trebleNote,
-    trebleAccidental,
-    bassNote,
-    bassAccidental,
-}: PianoStaffProps) {
+    target
+}: {
+    target: MusicSymbol
+}) {
+
     const containerRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
+
         if (!containerRef.current) return
+
         containerRef.current.innerHTML = ""
 
-        const renderer = new Renderer(containerRef.current, Renderer.Backends.SVG)
+        const renderer = new Renderer(
+            containerRef.current,
+            Renderer.Backends.SVG
+        )
+
         renderer.resize(220, 220)
+
         const context = renderer.getContext()
 
-        const trebleStave = new Stave(20, 20, 160)
-        const bassStave = new Stave(20, 110, 160)
+        const treble = new Stave(20, 20, 160)
+        treble.addClef("treble")
+        treble.setContext(context).draw()
 
-        trebleStave.addClef("treble")
-        bassStave.addClef("bass")
+        const bass = new Stave(20, 110, 160)
+        bass.addClef("bass")
+        bass.setContext(context).draw()
 
-        trebleStave.setContext(context).draw()
-        bassStave.setContext(context).draw()
-
-        const brace = new StaveConnector(trebleStave, bassStave)
+        const brace = new StaveConnector(treble, bass)
         brace.setType(StaveConnector.type.BRACE)
         brace.setContext(context).draw()
 
-        const leftLine = new StaveConnector(trebleStave, bassStave)
+        const leftLine = new StaveConnector(treble, bass)
         leftLine.setType(StaveConnector.type.SINGLE_LEFT)
         leftLine.setContext(context).draw()
 
-        const rightLine = new StaveConnector(trebleStave, bassStave)
+        const rightLine = new StaveConnector(treble, bass)
         rightLine.setType(StaveConnector.type.SINGLE_RIGHT)
         rightLine.setContext(context).draw()
 
-        const voices: Voice[] = []
+        if (target.type !== "note") return
 
-        let trebleVoice: Voice | null = null
-        let bassVoice: Voice | null = null
+        const vf = spelledToVexflow(target.pitch)
+        const duration = durationToVexflow(target.duration)
 
-        // 🎵 Treble
-        if (trebleNote) {
-            const note = new StaveNote({
-                keys: [trebleNote],
-                duration: "w",
-                clef: "treble"
+        const midi = target.pitch.midi
+
+        const clef = midi >= 60 ? "treble" : "bass"
+
+        const stemUp = stemUpForNote(target.pitch, clef)
+
+        const staveNote = new StaveNote({
+            clef,
+            keys: [vf.key],
+            duration,
+            stemDirection: stemUp ? Stem.UP : Stem.DOWN
+        })
+
+        if (vf.accidental) {
+            staveNote.addModifier(new Accidental(vf.accidental), 0)
+        } else {
+            const ghost = new Accidental("n")
+            ghost.setStyle({
+                fillStyle: "transparent",
+                strokeStyle: "transparent"
             })
-
-            if (trebleAccidental) {
-                note.addModifier(new Accidental(trebleAccidental), 0)
-            } else {
-                // Add invisible accidental to reserve spacing
-                const ghost = new Accidental("n") // natural
-                ghost.setStyle({ fillStyle: "transparent", strokeStyle: "transparent" })
-                note.addModifier(ghost, 0)
-            }
-
-            trebleVoice = new Voice({ numBeats: 4, beatValue: 4 })
-            trebleVoice.addTickables([note])
-            voices.push(trebleVoice)
+            staveNote.addModifier(ghost, 0)
         }
 
-        // 🎵 Bass
-        if (bassNote) {
-            const note = new StaveNote({
-                keys: [bassNote],
-                duration: "w",
-                clef: "bass"
-            })
+        const voice = new Voice({
+            numBeats: 4,
+            beatValue: 4
+        }).setStrict(false)
 
-            if (bassAccidental) {
-                note.addModifier(new Accidental(bassAccidental), 0)
-            } else {
-                // Add invisible accidental to reserve spacing
-                const ghost = new Accidental("n") // natural
-                ghost.setStyle({ fillStyle: "transparent", strokeStyle: "transparent" })
-                note.addModifier(ghost, 0)
-            }
+        voice.addTickables([staveNote])
 
-            bassVoice = new Voice({ numBeats: 4, beatValue: 4 })
-            bassVoice.addTickables([note])
-            voices.push(bassVoice)
+        new Formatter()
+            .joinVoices([voice])
+            .format([voice], 200)
+
+        if (clef === "treble") {
+            voice.draw(context, treble)
+        } else {
+            voice.draw(context, bass)
         }
 
-        // ✅ FORMAT FIRST
-        if (voices.length > 0) {
-            new Formatter()
-                .joinVoices(voices)
-                .format(voices, 120)
-        }
-
-        // ✅ THEN DRAW
-        trebleVoice?.draw(context, trebleStave)
-        bassVoice?.draw(context, bassStave)
-
-    }, [trebleNote, trebleAccidental, bassNote, bassAccidental])
+    }, [target])
 
     return <div ref={containerRef} />
 }

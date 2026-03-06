@@ -1,4 +1,4 @@
-// src/features/notes/config.ts
+// src/features/notes/notesConfig.ts
 
 import { 
     type Clef, 
@@ -18,7 +18,7 @@ export interface NotesExerciseConfig {
     naming: NamingSystem
 }
 
-export function configFromUrl(
+export function notesConfigFromUrl(
     params: URLSearchParams
 ): NotesExerciseConfig {
     const notes = parseNotesParam(params.get("notes"))
